@@ -854,14 +854,24 @@ elif menu == "👥 Segment Profiler":
 
             if "Mood" in df.columns:
                 st.subheader(f"🧠 Mood Breakdown by {seg_col}")
-                ct = pd.crosstab(df[seg_col], df["Mood"])
-                ct_pct = ct.div(ct.sum(axis=1), axis=0) * 100
-                fig5 = px.bar(ct_pct.reset_index().melt(id_vars=seg_col),
-                              x=seg_col, y="value", color="variable",
-                              barmode="stack", text_auto=".0f",
-                              color_discrete_map=MOOD_COLORS,
-                              labels={"value": "%", "variable": "Mood"})
-                st.plotly_chart(_layout(fig5, f"Mood % by {seg_col}", 440), use_container_width=True)
+                try:
+                    ct = pd.crosstab(df[seg_col], df["Mood"])
+                    ct_pct = ct.div(ct.sum(axis=1), axis=0) * 100
+                    melted5 = ct_pct.reset_index().melt(id_vars=seg_col,
+                                                         var_name="Mood", value_name="Pct")
+                    present_moods = melted5["Mood"].unique().tolist()
+                    fallback_colors = px.colors.qualitative.Bold
+                    safe_cmap = {m: MOOD_COLORS.get(m, fallback_colors[i % len(fallback_colors)])
+                                 for i, m in enumerate(present_moods)}
+                    fig5 = px.bar(melted5,
+                                  x=seg_col, y="Pct", color="Mood",
+                                  barmode="stack",
+                                  color_discrete_map=safe_cmap,
+                                  labels={"Pct": "%", "Mood": "Mood"})
+                    fig5.update_traces(texttemplate="%{y:.1f}%", textposition="inside")
+                    st.plotly_chart(_layout(fig5, f"Mood % by {seg_col}", 440), use_container_width=True)
+                except Exception as e:
+                    st.warning(f"Could not render Mood Breakdown: {e}")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PREDICT NEW
